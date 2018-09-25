@@ -58,6 +58,7 @@ def _glue_flows(node):
 	for statements in _gather_statements_lists(node):
 		blocks = statements.contents
 
+		#zzy: blocks may be list<Block> or list<Statement>, if it is list<Block>, glue all children Block's contents
 		if hasattr(blocks[-1], 'warp'):
 			assert isinstance(blocks[-1].warp, nodes.EndWarp)
 
@@ -933,6 +934,7 @@ def _make_explicit_subexpressions(parts):
 	return patched
 
 
+# zzy: create if node
 def _unwarp_if_statement(start, body, end, topmost_end):
 	expression, body, false = _extract_if_expression(start, body, end,
 								topmost_end)
@@ -1052,6 +1054,7 @@ def _search_expression_end(expression, falses):
 	return false, expression_end
 
 
+#zzy: branching pattern: first condition jump and then uncondition jump to same block
 def _find_branching_end(blocks, topmost_end):
 	end = blocks[0]
 
@@ -1135,7 +1138,7 @@ def _unwarp_loops(blocks, repeat_until):
 
 	return blocks
 
-
+#zzy: remove duplicated jump back loops
 def _cleanup_breaks_and_if_ends(loops, blocks):
 	outer_start_index = -1
 	outer_end = None
@@ -1154,6 +1157,7 @@ def _cleanup_breaks_and_if_ends(loops, blocks):
 			assert isinstance(warp, nodes.UnconditionalWarp)
 			assert warp.target == start
 
+			#zzy: will never fit the condition here???
 			# Break
 			if start.index == outer_start_index:
 				assert outer_end is not None
@@ -1463,6 +1467,7 @@ def _unwarp_breaks(start, blocks, next_block):
 
 		assert target in ends, "GOTO statements are not supported"
 
+		#zzy: why add a new block node here???
 		if block.warpins_count != 0:
 			new_block = _create_next_block(block)
 			new_block.warpins_count = block.warpins_count

@@ -38,6 +38,7 @@ def _eliminate_temporary(slots):
 			simple.append((info.references, src))
 			continue
 
+		#zzy: may assert failed???
 		assert len(assignment.expressions.contents) == 1
 
 		is_massive = len(assignment.destinations.contents) > 1
@@ -62,6 +63,7 @@ def _fill_massive_refs(info, simple, massive, iterators):
 	assert isinstance(src, (nodes.FunctionCall,
 				nodes.Vararg,
 				nodes.Primitive))
+	#zzy: assign 'src' to a new variable immediately
 	if isinstance(holder, nodes.Assignment):
 		dst = holder.destinations.contents[0]
 
@@ -132,7 +134,7 @@ def _get_holder(path):
 
 	return None
 
-
+#zzy: remove info.assignment node, replace info.assignment right value to all reference nodes
 def _eliminate_simple_cases(simple):
 	for info, ref, src in simple:
 		holder = ref.path[-2]
@@ -153,6 +155,7 @@ def _eliminate_simple_cases(simple):
 			print("err: slotworks.py assert found")
 
 
+#zzy: merge TableElement assignment node into the TableConstructor node
 def _eliminate_into_table_constructors(tables):
 	for info, ref in tables:
 		constructor = info.assignment.expressions.contents[0]
@@ -347,6 +350,7 @@ class _SlotsCollector(traverse.Visitor):
 		else:
 			self.slots.append(info)
 
+	#zzy: called when slot value will be update and current value will not used in the later
 	def _commit_slot(self, slot, node):
 		info = self._state().known_slots.get(slot)
 
@@ -359,6 +363,7 @@ class _SlotsCollector(traverse.Visitor):
 
 		self._commit_info(info)
 
+	#zzy: called when a new value will store in the slot
 	def _register_slot(self, slot, node):
 		self._commit_slot(slot, node)
 
@@ -386,6 +391,7 @@ class _SlotsCollector(traverse.Visitor):
 
 			self._commit_slot(slot.slot, node)
 
+	#zzy: called when a slot reference show in an instruction
 	def _register_slot_reference(self, slot, node):
 		info = self._state().known_slots.get(slot)
 

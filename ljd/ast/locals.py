@@ -48,7 +48,7 @@ class _LocalsMarker(traverse.Visitor):
 				continue
 
 			cleanup.append(slot)
-
+			#zzy: ???
 			if varinfo.type == varinfo.T_INTERNAL:
 				continue
 

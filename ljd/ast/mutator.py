@@ -37,11 +37,13 @@ class SimpleLoopWarpSwapper(traverse.Visitor):
 			if not isinstance(warp, nodes.ConditionalWarp):
 				continue
 
+			#zzy: check jump to same target
 			if warp.true_target != warp.false_target:
 				continue
 
 			slot = getattr(warp, "_slot", -1)
 
+			#zzy: check need copy
 			if slot < 0:
 				continue
 
