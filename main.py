@@ -73,7 +73,9 @@ def dump(name, obj, level=0):
 
 
 def main():
-    file_in = sys.argv[1]
+    argLen = len(sys.argv)
+    opts = sys.argv[1:-1]
+    file_in = sys.argv[-1]
 
     header, prototype = ljd.rawdump.parser.parse(file_in)
     #print ("good")
@@ -81,7 +83,9 @@ def main():
         return 1
 
     # TODO: args
-    # ljd.pseudoasm.writer.write(sys.stdout, header, prototype)
+    if "-d" in opts:
+        ljd.pseudoasm.writer.write(sys.stdout, header, prototype)
+        return
 
     ast = ljd.ast.builder.build(prototype)
 
