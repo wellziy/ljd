@@ -190,6 +190,13 @@ def _extract_if_body(start_index, blocks, topmost_end):
 	return body, end, end_index
 
 
+def _is_block_list_content_empty(blockList):
+	for block in blockList:
+		if len(block.contents) > 0:
+			return False
+	return True
+
+
 def _unwarp_expressions_pack(blocks, pack):
 	replacements = {}
 
@@ -200,6 +207,9 @@ def _unwarp_expressions_pack(blocks, pack):
 		end_index = blocks.index(end)
 
 		body = blocks[start_index + 1:end_index]
+		#zzy: check before call '_unwarp_logical_expression'
+		if _is_block_list_content_empty(body):
+			continue
 
 		_unwarp_logical_expression(start, end, body)
 
@@ -487,7 +497,9 @@ def _find_expression_slot(body):
 def _unwarp_logical_expression(start, end, body):
 	slot = _find_expression_slot(body)
 
-	assert slot is not None
+	#zzy: break point...
+	if slot is None:
+		assert False, "slot is None"
 
 	true, false, body = _get_terminators(body)
 
