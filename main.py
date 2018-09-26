@@ -24,6 +24,7 @@
 #
 
 import sys
+import io
 
 import ljd.rawdump.parser
 import ljd.pseudoasm.writer
@@ -73,6 +74,7 @@ def dump(name, obj, level=0):
 
 
 def main():
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf8')
     argLen = len(sys.argv)
     opts = sys.argv[1:-1]
     file_in = sys.argv[-1]
