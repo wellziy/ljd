@@ -513,6 +513,17 @@ def _compile_expression(body, end, true, false):
 	return _assemble_expression(explicit_parts)
 
 
+def gather_jump_alias_block(block, set):
+	while True:
+		if len(block.contents) > 0:
+			break
+		warp = block.warp
+		if not isinstance(warp, nodes.UnconditionalWarp):
+			break
+		set.add(warp.target)
+		block = warp.target
+
+
 #
 # The logical expressions:
 #
@@ -582,6 +593,10 @@ def _unwarp_expression(body, end, true, false):
 		terminator_index = end.index
 
 	terminators = set((true, false, end))
+	if true is not None:
+		gather_jump_alias_block(true, terminators)
+	if false is not None:
+		gather_jump_alias_block(false, terminators)
 
 	subexpression_start = 0
 
@@ -621,6 +636,9 @@ def _unwarp_expression(body, end, true, false):
 
 			subexpression = body[i:target_index]
 		else:
+			#zzy: break point...
+			if not (target in terminators):
+				pass
 			assert target in terminators
 
 			while i < len(body) - 2:
