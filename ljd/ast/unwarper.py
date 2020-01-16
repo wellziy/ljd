@@ -33,6 +33,7 @@ def unwarp(node):
 
 	_run_step(_unwarp_loops, node, repeat_until=True)
 	_run_step(_unwarp_expressions, node)
+	_run_step(_unwarp_repeat_until_true_loops, node)
 	_run_step(_unwarp_ifs, node)
 
 	_glue_flows(node)
@@ -60,7 +61,8 @@ def _glue_flows(node):
 
 		#zzy: blocks may be list<Block> or list<Statement>, if it is list<Block>, glue all children Block's contents
 		if hasattr(blocks[-1], 'warp'):
-			assert isinstance(blocks[-1].warp, nodes.EndWarp)
+			if not isinstance(blocks[-1].warp, nodes.EndWarp):
+				assert False
 
 			for i, block in enumerate(blocks[:-1]):
 				warp = block.warp
@@ -148,6 +150,11 @@ def _unwarp_ifs(blocks, top_end=None, topmost_end=None):
 
 		if isinstance(warp, nodes.UnconditionalWarp):
 			if warp.type == nodes.UnconditionalWarp.T_FLOW:
+				start_index += 1
+				continue
+			target = warp.target
+			if target == top_end or target == topmost_end:
+				_set_flow_to(start, blocks[start_index+1])
 				start_index += 1
 				continue
 
@@ -773,7 +780,9 @@ def _get_last_assignment_source(block):
 		return None
 
 	assignment = block.contents[-1]
-	assert isinstance(assignment, nodes.Assignment)
+	#zzy: break point...
+	if not isinstance(assignment, nodes.Assignment):
+		assert False
 	return assignment.expressions.contents[0]
 
 
@@ -983,7 +992,10 @@ def _unwarp_if_statement(start, body, end, topmost_end):
 		then_warp_out = then_body[-1].warp
 
 		assert _is_jump(then_warp_out)
-		assert then_warp_out.target in (end, topmost_end)
+		#zzy: break point
+		if then_warp_out.target not in (end, topmost_end):
+			assert False
+		#assert then_warp_out.target in (end, topmost_end)
 
 		else_body = body[else_start_index:]
 
@@ -1018,6 +1030,13 @@ def _unwarp_if_statement(start, body, end, topmost_end):
 	start.contents.append(node)
 
 
+def _is_block_contains_break(block):
+	for s in block.contents:
+		if isinstance(s, nodes.Break):
+			return True
+	return False
+
+
 def _extract_if_expression(start, body, end, topmost_end):
 	for i, block in enumerate(body):
 		if len(block.contents) != 0:
@@ -1031,6 +1050,10 @@ def _extract_if_expression(start, body, end, topmost_end):
 	falses = set()
 
 	for i, block in enumerate(body[:-1]):
+		if _is_block_contains_break(block):
+			falses.add(body[i+1])
+			continue
+
 		if not isinstance(block.warp, nodes.UnconditionalWarp):
 			continue
 
@@ -1043,7 +1066,6 @@ def _extract_if_expression(start, body, end, topmost_end):
 		falses.add(body[i + 1])
 
 	falses.add(end)
-
 	if topmost_end is not None:
 		falses.add(topmost_end)
 
@@ -1079,7 +1101,10 @@ def _search_expression_end(expression, falses):
 		else:
 			break
 
-	assert false is not None
+	#zzy: break point
+	if false is None:
+		assert False
+	#assert false is not None
 
 	return false, expression_end
 
@@ -1122,6 +1147,169 @@ def _remove_processed_blocks(blocks, boundaries):
 	remains += blocks[last_end_index + 1:]
 
 	return remains
+
+
+def _try_update_until_dict(start, target, dict):
+	dirty = False
+	startIndex = start.index
+	testIndex = target.index
+	for block,beginIndex in dict.items():
+		endIndex = block.index
+		if testIndex > beginIndex and testIndex < endIndex:
+			beginIndex = min(startIndex, beginIndex)
+			dict[block] = beginIndex
+			dirty = True
+	return dirty
+
+
+def _create_block_with_body(body):
+	first = body[0]
+	last = body[-1]
+	block = nodes.Block()
+	block.first_address = first.first_address
+	block.last_address = last.last_address
+	block.index = first.index
+	block.warpins_count = first.warpins_count
+	block.contents = body
+	for index, item in enumerate(body):
+		item.index = index
+	return block
+
+
+def _create_repeat_until_true_break_block(original, fix):
+	index = fix.index(original)
+	new_block = _create_next_block(original)
+	new_block.first_address = original.last_address
+	new_block.last_address = original.last_address
+	new_block.warpins_count = original.warpins_count
+	new_block.contents.append(nodes.Break())
+	if index >= len(fix) is None:
+		_set_end(new_block)
+	else:
+		_set_flow_to(new_block, fix[index+1])
+	fix.insert(index+1, new_block)
+
+	return new_block
+
+
+def _unwarp_repeat_until_true_breaks(body, end):
+	fix = list(body)
+	for index, block in enumerate(body):
+		warp = block.warp
+		if isinstance(warp, nodes.UnconditionalWarp) and warp.type == nodes.UnconditionalWarp.T_JUMP:
+			target = warp.target
+			if target == end:
+				new_block = _create_repeat_until_true_break_block(block, fix)
+				_set_flow_to(block, new_block)
+		if isinstance(warp, nodes.ConditionalWarp):
+			target = warp.false_target
+			if target == end:
+				new_block = _create_repeat_until_true_break_block(block, fix)
+				warp.false_target = new_block
+			target = warp.true_target
+			if target == end:
+				new_block = _create_repeat_until_true_break_block(block, fix)
+				warp.true_target = new_block
+	return fix
+
+
+def _process_repeat_until_true_blocks(blocks, untilList):
+	i = len(untilList)-1
+	while i >= 0:
+		item = untilList[i]
+		endBlock = item[0]
+		beginIndex = item[1]
+		endIndex = blocks.index(endBlock)
+		body = blocks[beginIndex:endIndex]
+		body = _unwarp_repeat_until_true_breaks(body, endBlock)
+		loop = nodes.RepeatUntil()
+		true = nodes.Primitive()
+		true.type = nodes.Primitive.T_TRUE
+		loop.expression = true
+		loop.statements.contents = body
+		block = _create_block_with_body(body)
+		block.contents = [loop]
+		_set_end(body[-1])
+		_replace_targets(blocks, body[0], block)
+		_set_flow_to(block, endBlock)
+		blocks = blocks[0:beginIndex] + [block] + blocks[endIndex:]
+		i -= 1
+
+	return blocks
+
+
+def _try_add_repeat_until_true_jumps(jumpList, block, target):
+	blockIndex = block.index
+	targetIndex = target.index
+	if targetIndex <= blockIndex:
+		return
+	jumpList.append((blockIndex, targetIndex))
+
+
+def _unwarp_repeat_until_true_loops(blocks):
+	jumpPairs = list()
+	i = 0
+	while i < len(blocks)-1:
+		cur = blocks[i]
+		warp = cur.warp
+		if isinstance(warp, nodes.UnconditionalWarp) and warp.type == nodes.UnconditionalWarp.T_JUMP:
+			_try_add_repeat_until_true_jumps(jumpPairs, cur, warp.target)
+		if isinstance(warp, nodes.ConditionalWarp):
+			_try_add_repeat_until_true_jumps(jumpPairs, cur, warp.false_target)
+			_try_add_repeat_until_true_jumps(jumpPairs, cur, warp.true_target)
+		i += 1
+
+	untilDict = dict()
+	sorted(jumpPairs, key = lambda x: x[0])
+	i = 0
+	while i < len(jumpPairs):
+		j = i + 1
+		topPair = jumpPairs[i]
+		topStart = topPair[0]
+		topEnd = topPair[1]
+		while j < len(jumpPairs):
+			bottomPair = jumpPairs[j]
+			bottomStart = bottomPair[0]
+			bottomEnd = bottomPair[1]
+			bottomEndBlock = blocks[bottomEnd]
+			# bottomEndTarget = _get_target(bottomEndBlock.warp, True)
+			if topStart < bottomStart and topEnd > bottomStart and topEnd < bottomEnd \
+					and bottomEndBlock.warpins_count > 1:
+				startIndex = untilDict.get(bottomEndBlock)
+				if startIndex is None:
+					startIndex = topStart
+				untilDict[bottomEndBlock] = min(startIndex, topStart)
+			j += 1
+		i += 1
+
+		# next = blocks[i+1]
+		# if len(next.contents) == 0:
+		# 	curTarget = _get_target(cur.warp)
+		# 	nextTarget = _get_target(next.warp, True)
+		# 	if nextTarget.index < curTarget.index and curTarget.index > cur.index and nextTarget.index > next.index:
+		# 		beginIndex = untilDict.get(curTarget)
+		# 		if beginIndex is None:
+		# 			beginIndex = i
+		# 		beginIndex = min(i, beginIndex)
+		# 		untilDict[curTarget] = beginIndex
+		# i += 1
+
+	i = len(blocks)-1
+	while i >= 0:
+		cur = blocks[i]
+		warp = cur.warp
+		if isinstance(warp, nodes.UnconditionalWarp) and warp.type == nodes.UnconditionalWarp.T_JUMP:
+			_try_update_until_dict(cur, warp.target, untilDict)
+		if isinstance(warp, nodes.ConditionalWarp):
+			_try_update_until_dict(cur, warp.false_target, untilDict)
+			_try_update_until_dict(cur, warp.true_target, untilDict)
+		i -= 1
+
+	untilList = list(untilDict.items())
+	untilList = sorted(untilList, key=lambda x: x[1])
+	if len(untilList) > 0:
+		xxxx = 0
+	return _process_repeat_until_true_blocks(blocks, untilList)
 
 
 # ##
