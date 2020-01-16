@@ -3,7 +3,7 @@
 #
 
 import ljd.bytecode.constants
-
+import utils
 
 def write_tables(writer, prototype):
 	i = 0
@@ -47,6 +47,8 @@ def _translate_element(element):
 	elif element is None:
 		return "nil"
 	elif isinstance(element, bytes):
-		return '"' + element.decode("utf8") + '"'
+		return utils.quote_str(element.decode("utf8"))
+	elif isinstance(element, str):
+		return utils.quote_str(element)
 	else:
 		return str(element)

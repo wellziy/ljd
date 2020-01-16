@@ -179,11 +179,11 @@ if gconfig.gBCVersion == 1:
 	GSET = _IDef("GSET", 		T_VAR, 	None, 	T_STR, 	"_env[{D}] = {A}")
 
 	TGETV = _IDef("TGETV", 		T_DST, 	T_VAR, 	T_VAR, 	"{A} = {B}[{C}]")
-	TGETS = _IDef("TGETS", 		T_DST, 	T_VAR, 	T_STR, 	"{A} = {B}.{C}")
+	TGETS = _IDef("TGETS", 		T_DST, 	T_VAR, 	T_STR, 	"{A} = {B}[{C}]")
 	TGETB = _IDef("TGETB", 		T_DST, 	T_VAR, 	T_LIT, 	"{A} = {B}[{C}]")
 
 	TSETV = _IDef("TSETV", 		T_VAR, 	T_VAR, 	T_VAR, 	"{B}[{C}] = {A}")
-	TSETS = _IDef("TSETS", 		T_VAR, 	T_VAR, 	T_STR, 	"{B}.{C} = {A}")
+	TSETS = _IDef("TSETS", 		T_VAR, 	T_VAR, 	T_STR, 	"{B}[{C}] = {A}")
 	TSETB = _IDef("TSETB", 		T_VAR, 	T_VAR, 	T_LIT, 	"{B}[{C}] = {A}")
 
 	TSETM = _IDef("TSETM", 	 	T_BS, 	None, 	T_NUM,

@@ -49,8 +49,9 @@ class IndentedStream():
 		else:
 			text = str(fmt)
 
-		assert "\n" not in text
-
+		#assert "\n" not in text
+		if "\n" in text:
+			self.fd.write("error: new line====>\n")
 		self.fd.write(text)
 
 	def end_line(self):

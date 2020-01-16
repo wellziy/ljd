@@ -6,6 +6,7 @@ import ljd.bytecode.instructions as ins
 from ljd.bytecode.constants import T_NIL, T_FALSE, T_TRUE
 
 import ljd.pseudoasm.prototype
+import utils
 
 _FORMAT = "{addr:3}\t[{line:3}]\t{name:<5}\t{a:3}\t{b}\t{c}\t; {description}"
 
@@ -103,6 +104,8 @@ def _translate(writer, addr, value, attr_type):
 			return "slot" + str(value)
 	elif attr_type == ins.T_UV:
 		name = prototype.debuginfo.lookup_upvalue_name(value)
+		if name is None:
+			return "uv" + str(value)
 		return "uv" + str(value) + '"' + name + '"'
 	elif attr_type == ins.T_PRI:
 		if value is None or value == T_NIL:
@@ -116,7 +119,7 @@ def _translate(writer, addr, value, attr_type):
 		return str(prototype.constants.numeric_constants[value])
 	elif attr_type == ins.T_STR:
 		binary = prototype.constants.complex_constants[value]
-		return '"' + binary + '"'
+		return utils.quote_str(binary)
 	elif attr_type == ins.T_TAB:
 		return "table#k" + str(value)
 	elif attr_type == ins.T_CDT:
@@ -157,6 +160,8 @@ def _lookup_variable_name_step(writer, addr, slot):
 	instructions = writer.instructions
 
 	knil_opcode = ins.KNIL.opcode
+	call_opcode = ins.CALL.opcode
+	callm_opcode = ins.CALLM.opcode
 	constants = writer.prototype.constants.complex_constants
 
 	while addr > 1:
@@ -168,6 +173,10 @@ def _lookup_variable_name_step(writer, addr, slot):
 					and (instruction.opcode == knil_opcode	\
 						or slot <= instruction.CD):
 				return None
+
+			if instruction.opcode == call_opcode or instruction.opcode == callm_opcode \
+				and slot >= instruction.A and slot <= instruction.A + instruction.B - 2:
+				return "slot" + str(slot)
 
 			continue
 
@@ -185,18 +194,21 @@ def _lookup_variable_name_step(writer, addr, slot):
 		# field or method
 		if instruction.opcode == ins.TGETS.opcode:
 			table_slot = instruction.B
-			table = _lookup_variable_name_step(writer, addr, table_slot)
+			table = _lookup_variable_name(writer, addr, table_slot)
 
 			if table is None:
-				table = "<unknown table>"
+				table = "<unknown table>" + str(table_slot)
 
 			binary = constants[instruction.CD]
-			return table + "." + binary
+			if utils.isTableStrIndex(binary):
+				return table + "." + binary
+			return table + "[" + utils.quote_str(binary) + "]"
 
 		if instruction.opcode == ins.UGET.opcode:
 			uv = instruction.CD
 			name = writer.prototype.debuginfo.lookup_upvalue_name(uv)
-
+			if name is None:
+				return "uv" + str(uv)
 			return "uv" + str(uv) + '"' + name + '"'
 
 		return None
@@ -262,7 +274,7 @@ def _translate_table_str_op(writer, description, addr, line, instruction):
 
 	C = CD[1:-1]
 
-	return description.format(A=A, B=B, C=C)
+	return description.format(A=A, B=B, C=utils.quote_str(C))
 
 
 def _translate_new_table(writer, description, addr, line, instruction):
