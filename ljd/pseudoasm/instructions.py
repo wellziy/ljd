@@ -162,6 +162,10 @@ def _lookup_variable_name_step(writer, addr, slot):
 	knil_opcode = ins.KNIL.opcode
 	call_opcode = ins.CALL.opcode
 	callm_opcode = ins.CALLM.opcode
+	kshort_opcode = ins.KSHORT.opcode
+	kstr_opcode = ins.KSTR.opcode
+	kpri_opcode = ins.KPRI.opcode
+	knum_opcode = ins.KNUM.opcode
 	constants = writer.prototype.constants.complex_constants
 
 	while addr > 1:
@@ -183,6 +187,11 @@ def _lookup_variable_name_step(writer, addr, slot):
 		if instruction.A_type != ins.T_DST or instruction.A != slot:
 			continue
 
+		curOpCode = instruction.opcode
+		if (curOpCode == kshort_opcode or curOpCode == kstr_opcode or curOpCode == kpri_opcode or curOpCode == knum_opcode) \
+			and instruction.A == slot:
+			return _translate(writer, addr, instruction.CD, instruction.CD_type)
+
 		if instruction.opcode == ins.MOV.opcode:
 			# Retry with new addr and slot
 			return addr, instruction.CD
@@ -197,7 +206,7 @@ def _lookup_variable_name_step(writer, addr, slot):
 			table = _lookup_variable_name(writer, addr, table_slot)
 
 			if table is None:
-				table = "<unknown table>" + str(table_slot)
+				table = "slot" + str(table_slot)
 
 			binary = constants[instruction.CD]
 			if utils.isTableStrIndex(binary):
