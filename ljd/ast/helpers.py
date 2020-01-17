@@ -88,6 +88,8 @@ def is_equal(a, b):
 	elif isinstance(a, nodes.TableElement):
 		return is_equal(a.table, b.table)		\
 			and is_equal(a.key, b.key)
+	elif isinstance(a, nodes.BinaryOperator):
+		return a.type == b.type and is_equal(a.left, b.left) and is_equal(a.right, b.right)
 	else:
 		assert isinstance(a, nodes.Constant)
 		return a.type == b.type and a.value == b.value

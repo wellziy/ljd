@@ -8,15 +8,18 @@ from ljd.ast.helpers import insert_table_record
 
 
 def eliminate_temporary(ast):
-	_eliminate_multres(ast)
+	try:
+		_eliminate_multres(ast)
 
-	slots, unused = _collect_slots(ast)
-	_eliminate_temporary(slots)
+		slots, unused = _collect_slots(ast)
+		_eliminate_temporary(slots)
 
-	# _remove_unused(unused)
+		# _remove_unused(unused)
+
+	except Exception as e:
+		print("--eliminate_temporary exception: " + repr(e))
 
 	_cleanup_invalid_nodes(ast)
-
 	return ast
 
 
