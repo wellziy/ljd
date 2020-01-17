@@ -1,6 +1,6 @@
 class Visitor():
 	def __init__(self):
-		pass
+		self.visitDict = {}
 
 	# ##
 
@@ -234,7 +234,9 @@ class Visitor():
 
 	def _visit(self, node):
 		assert node is not None
-
+		if self.visitDict.get(node):
+			return
+		self.visitDict[node] = True
 		node._accept(self)
 
 	def _visit_list(self, nodes_list):

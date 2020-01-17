@@ -152,7 +152,7 @@ def _eliminate_simple_cases(simple):
 			found = _replace_node(holder, dst, src)
 
 		if found == None:
-			print("err: slotworks.py assert found")
+			print("--err: slotworks.py assert found")
 
 
 #zzy: merge TableElement assignment node into the TableConstructor node
@@ -214,7 +214,7 @@ def _eliminate_iterators(iterators):
 			if hasattr(warp.controls.contents[i], 'slot') and hasattr(slot, 'slot'):
 				#assert warp.controls.contents[i].slot == slot.slot
 				if warp.controls.contents[i].slot != slot.slot:
-					print ("err: slotworks.py assert warp.controls.contents[i].slot == slot.slot")
+					print ("--err: slotworks.py assert warp.controls.contents[i].slot == slot.slot")
 
 		warp.controls.contents = [src]
 		processed_warps.add(warp)
@@ -248,6 +248,7 @@ def _eliminate_multres(ast):
 
 class _MultresEliminator(traverse.Visitor):
 	def __init__(self):
+		super(_MultresEliminator, self).__init__()
 		self._last_multres_value = None
 
 	def leave_assignment(self, node):
@@ -322,6 +323,7 @@ class _SlotsCollector(traverse.Visitor):
 	# ##
 
 	def __init__(self):
+		super(_SlotsCollector, self).__init__()
 		self._states = []
 		self._path = []
 		self._skip = None

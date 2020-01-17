@@ -57,6 +57,7 @@ def insert_table_record(constructor, key, value):
 def has_same_table(node, table):
 	class Checker(traverse.Visitor):
 		def __init__(self, table):
+			super(Checker, self).__init__()
 			self.found = False
 			self.table = table
 

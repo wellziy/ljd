@@ -1,4 +1,5 @@
 import copy
+import traceback
 
 import ljd.ast.nodes as nodes
 import ljd.ast.traverse as traverse
@@ -19,6 +20,7 @@ binop = nodes.BinaryOperator
 
 class _StatementsCollector(traverse.Visitor):
 	def __init__(self):
+		super(_StatementsCollector, self).__init__()
 		self.result = []
 
 	def visit_statements_list(self, node):
@@ -38,10 +40,26 @@ def unwarp(node):
 
 	_glue_flows(node)
 
+def create_error_blocks():
+	ret = nodes.Return()
+	info = nodes.Constant()
+	info.type = nodes.Constant.T_STRING
+	info.value = "<ljd decompile error>"
+	ret.returns.contents.append(info)
+	blocks = [ret]
+	return blocks
 
 def _run_step(step, node, **kargs):
-	for statements in _gather_statements_lists(node):
-		statements.contents = step(statements.contents, **kargs)
+	gatherList = _gather_statements_lists(node)
+	for index, statements in enumerate(gatherList):
+		try:
+			oldContents = statements.contents
+			newContents = step(oldContents, **kargs)
+			statements.contents = newContents
+		except Exception as e:
+			print("--exception: " + repr(e))
+			statements.contents = create_error_blocks()
+			#raise the exception if you want to debug code
 
 	# Fix block indices in case anything was moved
 	for statements in _gather_statements_lists(node):
@@ -62,16 +80,18 @@ def _glue_flows(node):
 		#zzy: blocks may be list<Block> or list<Statement>, if it is list<Block>, glue all children Block's contents
 		if hasattr(blocks[-1], 'warp'):
 			if not isinstance(blocks[-1].warp, nodes.EndWarp):
-				assert False
+				raise Exception("_glue_flows check isinstance failed")
 
 			for i, block in enumerate(blocks[:-1]):
 				warp = block.warp
 
-				assert _is_flow(warp)
+				if not _is_flow(warp):
+					raise Exception("_glue_flows check _is_flow failed")
 
 				target = warp.target
 
-				assert target == blocks[i + 1]
+				if not (target == blocks[i + 1]):
+					raise Exception("_glue_flows check target failed")
 
 				target.contents = block.contents + target.contents
 				block.contents = []
@@ -106,11 +126,13 @@ def _unwarp_expressions(blocks):
 
 		expressions = _find_expressions(start, body, end)
 
-		assert pack_set.isdisjoint(expressions)
+		if not pack_set.isdisjoint(expressions):
+			raise Exception("_unwarp_expressions check pack_set failed")
 
 		expressions_set = set(expressions)
 
-		assert len(expressions_set) == len(expressions)
+		if not (len(expressions_set) == len(expressions)):
+			raise Exception("_unwarp_expressions check expressions_set len failed")
 
 		if len(expressions) == 0:
 			start_index += 1
@@ -306,6 +328,7 @@ def _extract_destination_slots(statement):
 def _gather_slots(node):
 	class Collector(traverse.Visitor):
 		def __init__(self):
+			super(Collector, self).__init__()
 			self.slots = set()
 
 		def visit_identifier(self, node):
@@ -439,7 +462,8 @@ def _find_expressions(start, body, end):
 			if dst.type == nodes.Identifier.T_UPVALUE:
 				return []
 		else:
-			assert block != start
+			if not (block != start):
+				raise Exception("_find_expressions check 'block != start' failed")
 
 			return []
 
@@ -506,7 +530,7 @@ def _unwarp_logical_expression(start, end, body):
 
 	#zzy: break point...
 	if slot is None:
-		assert False, "slot is None"
+		raise Exception("_unwarp_logical_expression slot is None")
 
 	true, false, body = _get_terminators(body)
 
@@ -525,7 +549,9 @@ def _compile_expression(body, end, true, false):
 	parts = _unwarp_expression(body, end, true, false)
 
 	if len(parts) < 3:
-		assert len(parts) == 1
+		if not (len(parts) == 1):
+			raise Exception("_compile_expression parts len error")
+
 		return parts[0]
 
 	explicit_parts = _make_explicit_subexpressions(parts)
@@ -607,7 +633,8 @@ def _unwarp_expression(body, end, true, false):
 		if end is not None:
 			terminator_index = min(end.index, terminator_index)
 	else:
-		assert end is not None
+		if not (end is not None):
+			raise Exception("_unwarp_expression end is None")
 
 		terminator_index = end.index
 
@@ -782,13 +809,14 @@ def _get_last_assignment_source(block):
 	assignment = block.contents[-1]
 	#zzy: break point...
 	if not isinstance(assignment, nodes.Assignment):
-		assert False
+		raise Exception("_get_last_assignment_source check isinstance failed")
 	return assignment.expressions.contents[0]
 
 
 def _get_and_remove_last_assignment_source(block):
 	assignment = block.contents.pop()
-	assert isinstance(assignment, nodes.Assignment)
+	if not isinstance(assignment, nodes.Assignment):
+		raise Exception("_get_and_remove_last_assignment_source check isinstance failed")
 	return assignment.expressions.contents[0]
 
 
@@ -1049,6 +1077,9 @@ def _extract_if_expression(start, body, end, topmost_end):
 
 	falses = set()
 
+	if len(body) == 1 and _is_block_contains_break(body[0]):
+		falses.add(body[0])
+
 	for i, block in enumerate(body[:-1]):
 		if _is_block_contains_break(block):
 			falses.add(body[i+1])
@@ -1104,6 +1135,7 @@ def _search_expression_end(expression, falses):
 	#zzy: break point
 	if false is None:
 		assert False
+		#raise Exception("false is None")
 	#assert false is not None
 
 	return false, expression_end

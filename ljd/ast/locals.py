@@ -23,6 +23,7 @@ class _LocalsMarker(traverse.Visitor):
 			self.addr = -1
 
 	def __init__(self):
+		super(_LocalsMarker, self).__init__()
 		self._states = []
 
 	# ##
@@ -134,6 +135,7 @@ class _LocalDefinitionsMarker(traverse.Visitor):
 			self.addr = 0
 
 	def __init__(self):
+		super(_LocalDefinitionsMarker, self).__init__()
 		self._states = []
 
 	def _push_state(self):

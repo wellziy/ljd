@@ -69,6 +69,7 @@ WARP_TYPES = (
 
 class Visitor(traverse.Visitor):
 	def __init__(self, warped=True):
+		super(Visitor, self).__init__()
 		# Restrictions for the upmost level
 		self.restrictions = [None]
 		self.warped = warped
