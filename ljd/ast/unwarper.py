@@ -35,16 +35,18 @@ def unwarp(node):
 
 	_run_step(_unwarp_loops, node, repeat_until=True)
 	_run_step(_unwarp_expressions, node)
-	_run_step(_unwarp_repeat_until_true_loops, node)
+	#zzy
+	#_run_step(_unwarp_repeat_until_true_loops, node)
 	_run_step(_unwarp_ifs, node)
 
 	_glue_flows(node)
 
-def create_error_blocks():
+def create_error_blocks(msg):
+	msg = msg or "unknown"
 	ret = nodes.Return()
 	info = nodes.Constant()
 	info.type = nodes.Constant.T_STRING
-	info.value = "<ljd decompile error>"
+	info.value = "<ljd decompile error>:" + msg
 	ret.returns.contents.append(info)
 	blocks = [ret]
 	return blocks
@@ -57,8 +59,10 @@ def _run_step(step, node, **kargs):
 			newContents = step(oldContents, **kargs)
 			statements.contents = newContents
 		except Exception as e:
-			print("--unwarp exception: " + repr(e))
-			statements.contents = create_error_blocks()
+			msg = "--unwarp exception: " + repr(e)
+			print(msg)
+			statements.contents = create_error_blocks(msg)
+			#raise e
 			#raise the exception if you want to debug code
 
 	# Fix block indices in case anything was moved
@@ -925,6 +929,9 @@ def _get_terminators(body):
 	if len(prev.contents) != 1:
 		return None, None, body
 
+	if not isinstance(prev.contents[0], nodes.ExpressionsList):
+		return None,  None, body
+
 	src = prev.contents[0].expressions.contents[0]
 
 	if not isinstance(src, nodes.Primitive) or src.type != src.T_FALSE:
@@ -1035,7 +1042,8 @@ def _unwarp_if_statement(start, body, end, topmost_end):
 			else:
 				assert else_warp_out.target == end
 		else:
-			print ("err: unwarper.py assert isinstance(else_warp_out, nodes.EndWarp), Block indices are unreliable while you are mangling them! P.S. Probably they should not be named indices... But they ARE used as indices during other phases. Sometimes.")
+			print("--err: unwarper.py assert isinstance(else_warp_out, nodes.EndWarp)")
+			#print ("err: unwarper.py assert isinstance(else_warp_out, nodes.EndWarp), Block indices are unreliable while you are mangling them! P.S. Probably they should not be named indices... But they ARE used as indices during other phases. Sometimes.")
 
 		_set_end(then_body[-1])
 		then_blocks = _unwarp_ifs(then_body, then_body[-1], topmost_end)
