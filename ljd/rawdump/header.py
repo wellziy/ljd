@@ -3,7 +3,7 @@
 #
 
 from ljd.util.log import errprint
-
+import gconfig
 
 _MAGIC = b'\x1bLJ'
 
@@ -54,6 +54,10 @@ def _check_magic(state):
 
 def _read_version(state, header):
     header.version = state.stream.read_byte()
+    if header.version != gconfig.gBCVersion:
+        errprint("header.version {0} is not equals to gconfig.gBCVersion {1}", header.version, gconfig.gBCVersion)
+        errprint("please modify gBCVersion in gconfig.py to make sure gconfig.gBCVersion == header.version")
+        return False
 
     if header.version > _MAX_VERSION:
         errprint("Version {0}: propritary modifications",
