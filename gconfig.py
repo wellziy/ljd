@@ -1,4 +1,5 @@
 
 #zzw 20180714 support str encode
 gFlagDic = {'strEncode' : 'ascii'}
-gBCVersion = 1
+gBCVersion = 2
+gPrintOpCode = False

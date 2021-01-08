@@ -9,7 +9,7 @@ import ljd.bytecode.instructions as ins
 import ljd.rawdump.constants
 import ljd.rawdump.debuginfo
 import ljd.rawdump.code
-
+import gconfig
 
 FLAG_HAS_CHILD = 0b00000001
 FLAG_IS_VARIADIC = 0b00000010
@@ -136,11 +136,12 @@ def _read_instructions(parser, prototype):
         if not instruction:
             return False
 
-        #print ("inst：%s" % instruction.name)
-        #print ("opcode:%x" % instruction.opcode)
-        #print ("A:%x" % instruction.A)
-        #print ("B:%x" % instruction.B)
-        #print ("CD:%x" % instruction.CD)
+        if gconfig.gPrintOpCode:
+            print ("inst：%s" % instruction.name)
+            print ("opcode:%x" % instruction.opcode)
+            print ("A:%x" % (instruction.A_type and instruction.A or 0))
+            print ("B:%x" % (instruction.B_type and instruction.B or 0))
+            print ("CD:%x" % (instruction.CD_type and instruction.CD or 0))
         prototype.instructions.append(instruction)
 
         i += 1
