@@ -5,7 +5,7 @@
 import ljd.ast.nodes as nodes
 import ljd.ast.traverse as traverse
 from ljd.ast.helpers import insert_table_record
-
+import utils
 
 def eliminate_temporary(ast):
 	try:
@@ -17,6 +17,7 @@ def eliminate_temporary(ast):
 		# _remove_unused(unused)
 
 	except Exception as e:
+		utils.printException(e)
 		print("--eliminate_temporary exception: " + repr(e))
 
 	_cleanup_invalid_nodes(ast)
@@ -30,26 +31,30 @@ def _eliminate_temporary(slots):
 	iterators = []
 
 	for info in slots:
-		assignment = info.assignment
+		try:
+			assignment = info.assignment
 
-		if not isinstance(assignment, nodes.Assignment):
-			assert isinstance(assignment, (nodes.IteratorWarp,
-							nodes.NumericLoopWarp,
-							nodes.FunctionDefinition))
+			if not isinstance(assignment, nodes.Assignment):
+				assert isinstance(assignment, (nodes.IteratorWarp,
+								nodes.NumericLoopWarp,
+								nodes.FunctionDefinition))
 
-			src = info.references[1].identifier
-			simple.append((info.references, src))
-			continue
+				src = info.references[1].identifier
+				simple.append((info.references, src))
+				continue
 
-		#zzy: may assert failed???
-		assert len(assignment.expressions.contents) == 1
+			#zzy: may assert failed???
+			assert len(assignment.expressions.contents) == 1
 
-		is_massive = len(assignment.destinations.contents) > 1
+			is_massive = len(assignment.destinations.contents) > 1
 
-		if is_massive:
-			_fill_massive_refs(info, simple, massive, iterators)
-		else:
-			_fill_simple_refs(info, simple, tables)
+			if is_massive:
+				_fill_massive_refs(info, simple, massive, iterators)
+			else:
+				_fill_simple_refs(info, simple, tables)
+		except Exception as e:
+			utils.printException(e)
+			print("--_eliminate_temporary error")
 
 	_eliminate_simple_cases(simple)
 	_eliminate_into_table_constructors(tables)
@@ -70,7 +75,8 @@ def _fill_massive_refs(info, simple, massive, iterators):
 	if isinstance(holder, nodes.Assignment):
 		dst = holder.destinations.contents[0]
 
-		assert len(info.references) == 2
+		if len(info.references) != 2:
+			assert len(info.references) == 2
 		orig = info.references[0].identifier
 
 		assignment = ref.path[-3]
@@ -348,9 +354,11 @@ class _SlotsCollector(traverse.Visitor):
 		self._states.pop()
 
 	def _commit_info(self, info):
-		assert len(info.references) > 0
+		if len(info.references) <= 0:
+			#print("--_SlotsCollector._commit_info error, ref <= 0")
+			assert(False)
 
-		if len(info.references) == 1:
+		if len(info.references) <= 1:
 			self.unused.append(info)
 		else:
 			self.slots.append(info)
@@ -368,7 +376,7 @@ class _SlotsCollector(traverse.Visitor):
 
 		self._commit_info(info)
 
-	#zzy: called when a new value will store in the slot
+	#zzy: called when a new value will store in the slot, node is Assignment
 	def _register_slot(self, slot, node):
 		self._commit_slot(slot, node)
 
@@ -396,7 +404,7 @@ class _SlotsCollector(traverse.Visitor):
 
 			self._commit_slot(slot.slot, node)
 
-	#zzy: called when a slot reference show in an instruction
+	#zzy: called when a slot reference show in an instruction, node is Identifier
 	def _register_slot_reference(self, slot, node):
 		info = self._state().known_slots.get(slot)
 

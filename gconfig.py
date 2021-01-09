@@ -3,3 +3,4 @@
 gFlagDic = {'strEncode' : 'ascii'}
 gBCVersion = 2
 gPrintOpCode = False
+gPrintException = True
